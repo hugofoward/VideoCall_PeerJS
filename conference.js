@@ -1,6 +1,7 @@
 const PRE = "DELTA"
 const SUF = "MEET"
 var room_id;
+let currentPeer;
 var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 var local_stream;
 function createRoom(){
@@ -27,6 +28,7 @@ function createRoom(){
         call.answer(local_stream);
         call.on('stream',(stream)=>{
             setRemoteStream(stream)
+            currentPeer = call.peerConnection
         })
     })
 }
@@ -38,7 +40,7 @@ function setLocalStream(stream){
     video.muted = true;
     video.play();
 }
-function setRemoteStream(stream){
+function setRemoteStream(stream) {
    
     let video = document.getElementById("remote-video");
     video.srcObject = stream;
@@ -66,21 +68,42 @@ function joinRoom(){
         return;
     }
     room_id = PRE+room+SUF;
-    hideModal()
+    // hideModal()
     let peer = new Peer()
     peer.on('open', (id)=>{
-        console.log("Connected with Id: "+id)
-        getUserMedia({video: true, audio: true}, (stream)=>{
+        console.log( "Connected with Id: "+ id )
+        getUserMedia({video: true, audio: true}, (stream) => {
             local_stream = stream;
             setLocalStream(local_stream)
             notify("Joining peer")
             let call = peer.call(room_id, stream)
             call.on('stream', (stream)=>{
                 setRemoteStream(stream);
+                currentPeer = call.peerConnection
             })
         }, (err)=>{
             console.log(err)
         })
 
+    })
+}
+
+function shareScreen() {
+    navigator.mediaDevices.getDisplayMedia({
+        video: {
+            cursor:"always"
+        },
+        audio: {
+            echoCancellation: true,
+            noiseSuppression: true
+        }
+    }).then((stream)=>{
+        let videoTrack = stream.getVideoTracks()[0];
+        let sender = currentPeer.getSenders().find(function(s) {
+            return s.track.kind == videoTrack.kind
+        })
+        sender.replaceTrack(videoTrack)
+    }).catch((err) => {
+        console.log("unable to get display media" + err)
     })
 }
