@@ -30,6 +30,8 @@ function createRoom(){
             setRemoteStream(stream)
             currentPeer = call.peerConnection
         })
+
+
     })
 }
 
